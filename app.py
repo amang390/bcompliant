@@ -26,11 +26,12 @@ with open("RBI_database_final.pkl", "rb") as f:
 global_ranker = Ranker(model_name="ms-marco-TinyBERT-L-2-v2")
 # --- Function Definitions ---
 
-def generate_response(client,prompt, model, json_mode=False, stream=False):
+def generate_response(API_KEY,prompt, model, json_mode=False, stream=False):
     """
     Calls the OpenAI chat API.
     (If your API/client supports streaming, pass stream=True; here we use a non-streaming call.)
     """
+    client = OA(api_key=API_KEY)
     if json_mode:
         response = client.chat.completions.create(
             temperature=0.1,
@@ -88,7 +89,7 @@ def reranking(query, matched_docs, k1):
     return final_results
 
 
-def hyde_response_final(client,query, GPT_MODEL):
+def hyde_response_final(API_KEY,query, GPT_MODEL):
     prompt =  """\nQUERY: """ + str(query) + """\nINSTRUCTIONS:
     You are an AI assistant (LLM #1) specializing in banking and financial compliance queries. 
     Your goals are to:
@@ -171,7 +172,7 @@ def hyde_response_final(client,query, GPT_MODEL):
     • Do not include text outside the JSON response.
     • Include full-forms wherever possible
     """
-    response = generate_response(client,prompt=prompt, model="gpt-4o", json_mode=True)
+    response = generate_response(API_KEY,prompt=prompt, model="gpt-4o", json_mode=True)
     return response
 
 def stream_text(text, chunk_size=100, delay=0.05):
@@ -204,7 +205,7 @@ def query_endpoint():
     def generate():
 
         # Step 1: Get the hyde (query refinement and classification) response.
-        hyde_resp = hyde_response_final(query_input, GPT_MODEL,client)
+        hyde_resp = hyde_response_final(query_input, GPT_MODEL,API_KEY)
         # (Assuming a non-streaming response here.)
         hyde_json = json.loads(hyde_resp.choices[0].message.content)
         
