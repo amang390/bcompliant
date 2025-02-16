@@ -286,7 +286,7 @@ def query_endpoint():
         )
         for chunk in explanation_response:
             if chunk.choices[0].delta.content is not None:
-                yield (chunk)
+                yield (chunk.choices[0])
         
         # Insert a separator.
         yield "\n\n--- References ---\n\n"
@@ -363,10 +363,10 @@ def query_endpoint():
         )
         for chunk in reference_response:
             if chunk.choices[0].delta.content is not None:
-                yield (chunk)
+                yield (chunk.choices[0])
         
 
-    return Response(generate(),content_type="text/plain")
+    return Response(generate(),content_type="application/json")
 
 if __name__ == "__main__":
     app.run(debug=True, threaded=True)
