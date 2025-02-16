@@ -205,7 +205,7 @@ def query_endpoint():
     def generate():
 
         # Step 1: Get the hyde (query refinement and classification) response.
-        hyde_resp = hyde_response_final(query_input, GPT_MODEL,API_KEY)
+        hyde_resp = hyde_response_final(API_KEY,query_input, GPT_MODEL)
         # (Assuming a non-streaming response here.)
         hyde_json = json.loads(hyde_resp.choices[0].message.content)
         
