@@ -15,11 +15,6 @@ from openai import OpenAI as OA
 
 
 # --- Initialize embedding & vectorstore ---
-embedding = OpenAIEmbeddings(model="text-embedding-3-large",api_key=API_KEY)
-explanation_db = Chroma(
-    persist_directory="RBI_EXPLANATIONS",
-    embedding_function=embedding
-)
 
 # --- Load retriever and database from disk ---
 with open("bm25_retriever.pkl", "rb") as file:
@@ -201,9 +196,13 @@ def query_endpoint():
     API_KEY = data.get("api_key")
     GPT_MODEL = 'gpt-4o-mini'
     client = OA(api_key=API_KEY)
-
+    embedding = OpenAIEmbeddings(model="text-embedding-3-large",api_key=API_KEY)
+    explanation_db = Chroma(
+    persist_directory="RBI_EXPLANATIONS",
+    embedding_function=embedding)
     @stream_with_context
     def generate():
+
         # Step 1: Get the hyde (query refinement and classification) response.
         hyde_resp = hyde_response_final(query_input, GPT_MODEL,client)
         # (Assuming a non-streaming response here.)
