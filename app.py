@@ -286,10 +286,7 @@ def query_endpoint():
         )
         for chunk in explanation_response:
             if chunk.choices[0].delta.content is not None:
-                yield  (json.dumps({"response":{"content": chunk.choices[0].delta.content,
-                "role": chunk.choices[0].delta.role,
-                "finish_reason": chunk.choices[0].finish_reason}
-                })).encode('utf-8')
+                yield chunk.encode('utf-8')
         
         # Insert a separator.
         #yield "\n\n--- References ---\n\n"
@@ -366,10 +363,7 @@ def query_endpoint():
         )
         for chunk in reference_response:
             if chunk.choices[0].delta.content is not None:
-                yield  (json.dumps({"response":{"content": chunk.choices[0].delta.content,
-                "role": chunk.choices[0].delta.role,
-                "finish_reason": chunk.choices[0].finish_reason}
-                })).encode('utf-8')
+                yield  chunk.encode('utf-8')
         
 
     return Response(generate(),content_type="application/json")
