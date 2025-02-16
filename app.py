@@ -224,7 +224,7 @@ def query_endpoint():
         reranked_docs = reranking(expanded_query, filtered_docs, k)
         reranked_index = [doc.metadata["id"] for doc in reranked_docs]
         final_docs = [rbi_database.get(key) for key in reranked_index if key in rbi_database]
-        yield f"finaldocs: {len(final_docs)}\n"
+       
 
         # Step 3: Build an explanation prompt based on the query category.
         if hyde_json["category"] == "Informational":
@@ -293,7 +293,7 @@ def query_endpoint():
             }) + "\n").encode('utf-8')
         
         # Insert a separator.
-        yield "\n\n--- References ---\n\n"
+        #yield "\n\n--- References ---\n\n"
 
         prompt_documents = ""
         for i, doc in enumerate(final_docs, start=1):
