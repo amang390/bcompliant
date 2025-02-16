@@ -286,7 +286,7 @@ def query_endpoint():
         )
         for chunk in explanation_response:
             if chunk.choices[0].delta.content is not None:
-                yield chunk.encode('utf-8')
+                yield chunk.choices[0].encode('utf-8')
         
         # Insert a separator.
         #yield "\n\n--- References ---\n\n"
@@ -363,7 +363,7 @@ def query_endpoint():
         )
         for chunk in reference_response:
             if chunk.choices[0].delta.content is not None:
-                yield  chunk.encode('utf-8')
+                yield  chunk.choices[0].encode('utf-8')
         
 
     return Response(generate(),content_type="application/json")
