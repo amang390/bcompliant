@@ -286,7 +286,7 @@ def query_endpoint():
         )
         for chunk in explanation_response:
             if chunk.choices[0].delta.content is not None:
-               yield  json.dumps({"response": chunk.choices[0].delta.content})
+               yield f"data: {json.dumps({'response': chunk.choices[0].delta.content})}\n\n"
 
         prompt_documents = ""
         for i, doc in enumerate(final_docs, start=1):
@@ -360,8 +360,8 @@ def query_endpoint():
         )
         for chunk in reference_response:
             if chunk.choices[0].delta.content is not None:
-                yield  json.dumps({"response": chunk.choices[0].delta.content})
-    return Response(generate(),content_type="application/x-ndjson")
+                yield f"data: {json.dumps({'response': chunk.choices[0].delta.content})}\n\n"
+    return Response(stream_with_context(generate()), content_type="text/event-stream")
 
 if __name__ == "__main__":
     app.run(debug=True, threaded=True)
