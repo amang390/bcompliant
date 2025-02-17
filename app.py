@@ -350,8 +350,10 @@ def query_endpoint():
 
         END OF INSTRUCTIONS
         """.strip()
-
+        
+        yield "data: " + json.dumps({'response': ' \n','type': 'reference'}) + "\n\n"
         yield "data: " + json.dumps({'response': f'\nReferences:\n','type': 'reference'}) + "\n\n"
+        yield "data: " + json.dumps({'response': ' \n','type': 'reference'}) + "\n\n"
 
         # Step 5: Generate references (also streamed from OpenAI).
         reference_response = client.chat.completions.create(
