@@ -286,7 +286,8 @@ def query_endpoint():
         )
         for chunk in explanation_response:
             if chunk.choices[0].delta.content is not None:
-               yield f"data: {json.dumps({'response': chunk.choices[0].delta.content})}\n\n"
+               yield f"data: {json.dumps({'response': chunk.choices[0].delta.content,
+                              "type": "explanation"})}\n\n"
 
         prompt_documents = ""
         for i, doc in enumerate(final_docs, start=1):
@@ -348,7 +349,8 @@ def query_endpoint():
         END OF INSTRUCTIONS
         """.strip()
 
-        yield f"data: {json.dumps({'response': '\nReferences:\n'})}\n\n"
+        yield "data: " + json.dumps({'response': '\nReferences:\n',
+                              "type": "reference"}) + "\n\n"
 
         # Step 5: Generate references (also streamed from OpenAI).
         reference_response = client.chat.completions.create(
@@ -362,7 +364,8 @@ def query_endpoint():
         )
         for chunk in reference_response:
             if chunk.choices[0].delta.content is not None:
-                yield f"data: {json.dumps({'response': chunk.choices[0].delta.content})}\n\n"
+                yield f"data: {json.dumps({'response': chunk.choices[0].delta.content,
+                              "type": "reference"})}\n\n"
     return Response(stream_with_context(generate()), content_type="text/event-stream")
 
 if __name__ == "__main__":
