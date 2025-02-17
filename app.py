@@ -284,13 +284,9 @@ def query_endpoint():
             }],
             stream=True
         )
-        yield '{"explanation": ['
         for chunk in explanation_response:
             if chunk.choices[0].delta.content is not None:
-                yield json.dumps({"response": chunk.choices[0].delta.content}) + ', '
-        yield ']}'
-        # Insert a separator.
-        #yield "\n\n--- References ---\n\n"
+               yield  json.dumps({"response": chunk.choices[0].delta.content})
 
         prompt_documents = ""
         for i, doc in enumerate(final_docs, start=1):
@@ -362,12 +358,10 @@ def query_endpoint():
             }],
             stream=True
         )
-        yield '{"references": ['
         for chunk in reference_response:
             if chunk.choices[0].delta.content is not None:
-                yield  json.dumps({"response": chunk.choices[0].delta.content}) + ', ' 
-        yield ']}'
-    return Response(generate(),content_type="application/json")
+                yield  json.dumps({"response": chunk.choices[0].delta.content})
+    return Response(generate(),content_type="application/x-ndjson")
 
 if __name__ == "__main__":
     app.run(debug=True, threaded=True)
