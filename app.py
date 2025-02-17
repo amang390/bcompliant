@@ -284,10 +284,11 @@ def query_endpoint():
             }],
             stream=True
         )
+        yield '{"explanation": ['
         for chunk in explanation_response:
             if chunk.choices[0].delta.content is not None:
-                yield json.dumps({"response": chunk.choices[0].delta.content})
-        
+                yield json.dumps({"response": chunk.choices[0].delta.content}) + ', '
+        yield ']}'
         # Insert a separator.
         #yield "\n\n--- References ---\n\n"
 
@@ -361,10 +362,11 @@ def query_endpoint():
             }],
             stream=True
         )
+        yield '{"references": ['
         for chunk in reference_response:
             if chunk.choices[0].delta.content is not None:
-                yield  json.dumps({"response": chunk.choices[0].delta.content})
-
+                yield  json.dumps({"response": chunk.choices[0].delta.content}) + ', ' 
+        yield ']}'
     return Response(generate(),content_type="application/json")
 
 if __name__ == "__main__":
