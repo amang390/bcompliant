@@ -2,6 +2,7 @@ import json
 import pickle
 import time
 from flask import Flask, request, Response, stream_with_context
+from flask_cors import CORS
 
 # --- Imports from LangChain, OpenAI, etc. ---
 from langchain.vectorstores import Chroma
@@ -187,6 +188,8 @@ def stream_text(text, chunk_size=100, delay=0.05):
 
 app = Flask(__name__)
 
+CORS(app)
+
 @app.route('/query', methods=['POST'])
 def query_endpoint():
     data = request.get_json()
@@ -348,7 +351,7 @@ def query_endpoint():
         END OF INSTRUCTIONS
         """.strip()
 
-        yield "data: " + json.dumps({'response': '\nReferences:\n','type': 'reference'}) + "\n\n"
+        yield "data: " + json.dumps({'response': f'\nReferences:\n','type': 'reference'}) + "\n\n"
 
         # Step 5: Generate references (also streamed from OpenAI).
         reference_response = client.chat.completions.create(
