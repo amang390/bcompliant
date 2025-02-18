@@ -24,6 +24,10 @@ with open("bm25_retriever.pkl", "rb") as file:
 with open("RBI_database_final.pkl", "rb") as f:
     rbi_database = pickle.load(f)
 
+explanation_db = Chroma(
+    persist_directory="RBI_EXPLANATIONS",
+    embedding_function=None)
+
 global_ranker = Ranker(model_name="ms-marco-TinyBERT-L-2-v2")
 # --- Function Definitions ---
 
@@ -201,23 +205,22 @@ def query_endpoint():
     GPT_MODEL = 'gpt-4o-mini'
     client = OA(api_key=API_KEY)
     embedding = OpenAIEmbeddings(model="text-embedding-3-large",api_key=API_KEY)
-    explanation_db = Chroma(
-    persist_directory="RBI_EXPLANATIONS",
-    embedding_function=embedding)
+    
     @stream_with_context
     def generate():
-
+        yield "data: " + json.dumps({'response': f'hyde_started','type': 'explanation'}) + "\n\n"
         # Step 1: Get the hyde (query refinement and classification) response.
         hyde_resp = hyde_response_final(API_KEY,query_input, GPT_MODEL)
         # (Assuming a non-streaming response here.)
         hyde_json = json.loads(hyde_resp.choices[0].message.content)
-        
+        yield "data: " + json.dumps({'response': f'hyde_completed','type': 'explanation'}) + "\n\n"
         # Step 2: Expand the query and retrieve documents.
         
         filtered_docs = []
         expanded_query = query_input + ", " + query_input + ", " + ', '.join(hyde_json["refinedQuery"])
-        filtered_docs += retrieval(explanation_db, expanded_query, bm25_retriever, k=50)
-        
+        expanded_query_vector = embedding.embed_query(expanded_query)
+        filtered_docs += retrieval(explanation_db, expanded_query_vector, bm25_retriever, k=50)
+        yield "data: " + json.dumps({'response': f'retrieval_completed','type': 'explanation'}) + "\n\n"
         # Set k based on query category.
         if hyde_json["category"] in ["Informational", "Navigational"]:
             k = 10
@@ -227,7 +230,7 @@ def query_endpoint():
         reranked_docs = reranking(expanded_query, filtered_docs, k)
         reranked_index = [doc.metadata["id"] for doc in reranked_docs]
         final_docs = [rbi_database.get(key) for key in reranked_index if key in rbi_database]
-       
+        yield "data: " + json.dumps({'response': f'reranking_completed','type': 'explanation'}) + "\n\n"
 
         # Step 3: Build an explanation prompt based on the query category.
         if hyde_json["category"] == "Informational":
@@ -291,6 +294,8 @@ def query_endpoint():
             if chunk.choices[0].delta.content is not None:
                yield f"data: {json.dumps({'response': chunk.choices[0].delta.content,'type': 'explanation'})}\n\n"
 
+        yield "data: " + json.dumps({'response': f'explanation_completed','type': 'explanation'}) + "\n\n"
+        
         prompt_documents = ""
         for i, doc in enumerate(final_docs, start=1):
             doc_name = doc.metadata.get("name", "Unknown Name")
