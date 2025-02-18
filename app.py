@@ -11,6 +11,7 @@ from langchain.docstore.document import Document
 from langchain.retrievers import BM25Retriever, EnsembleRetriever
 from flashrank import Ranker, RerankRequest
 from openai import OpenAI as OA
+import os
 
 # --- API and Client Setup ---
 
@@ -24,9 +25,13 @@ with open("bm25_retriever.pkl", "rb") as file:
 with open("RBI_database_final.pkl", "rb") as f:
     rbi_database = pickle.load(f)
 
+openai_api_key = os.getenv("OPENAI_API_KEY")
+
+embedding = OpenAIEmbeddings(model="text-embedding-3-large",api_key=openai_api_key)
+
 explanation_db = Chroma(
     persist_directory="RBI_EXPLANATIONS",
-    embedding_function=None)
+    embedding_function=embedding)
 
 global_ranker = Ranker(model_name="ms-marco-TinyBERT-L-2-v2")
 # --- Function Definitions ---
@@ -204,7 +209,7 @@ def query_endpoint():
     API_KEY = data.get("api_key")
     GPT_MODEL = 'gpt-4o-mini'
     client = OA(api_key=API_KEY)
-    embedding = OpenAIEmbeddings(model="text-embedding-3-large",api_key=API_KEY)
+    
     
     @stream_with_context
     def generate():
@@ -218,8 +223,8 @@ def query_endpoint():
         
         filtered_docs = []
         expanded_query = query_input + ", " + query_input + ", " + ', '.join(hyde_json["refinedQuery"])
-        expanded_query_vector = embedding.embed_query(expanded_query)
-        filtered_docs += retrieval(explanation_db, expanded_query_vector, bm25_retriever, k=50)
+        
+        filtered_docs += retrieval(explanation_db, expanded_query, bm25_retriever, k=50)
         yield "data: " + json.dumps({'response': f'retrieval_completed','type': 'explanation'}) + "\n\n"
         # Set k based on query category.
         if hyde_json["category"] in ["Informational", "Navigational"]:
@@ -295,7 +300,7 @@ def query_endpoint():
                yield f"data: {json.dumps({'response': chunk.choices[0].delta.content,'type': 'explanation'})}\n\n"
 
         yield "data: " + json.dumps({'response': f'explanation_completed','type': 'explanation'}) + "\n\n"
-        
+
         prompt_documents = ""
         for i, doc in enumerate(final_docs, start=1):
             doc_name = doc.metadata.get("name", "Unknown Name")
