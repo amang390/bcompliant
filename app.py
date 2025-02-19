@@ -13,35 +13,28 @@ from flashrank import Ranker, RerankRequest
 from openai import OpenAI as OA
 import os
 
-# --- API and Client Setup ---
-
-
-# --- Initialize embedding & vectorstore ---
-
-# --- Load retriever and database from disk ---
-with open("bm25_retriever.pkl", "rb") as file:
-    bm25_retriever = pickle.load(file)
-
-with open("RBI_database_final.pkl", "rb") as f:
-    rbi_database = pickle.load(f)
+bm25_encoder = BM25Encoder().load("bm25_values.json")
 
 openai_api_key = os.getenv("OPENAI_API_KEY")
+pinecone_api_key = os.getenv("PC_API_KEY")
+cohere_api_key = os.getenv("CO_API_KEY")
 
 embedding = OpenAIEmbeddings(model="text-embedding-3-large",api_key=openai_api_key)
+client = OA(api_key=openai_api_key)
+co = cohere.ClientV2(api_key=cohere_api_key)
+pc = Pinecone(api_key=pinecone_api_key)
+index = pc.Index("rbifinal")
 
-explanation_db = Chroma(
-    persist_directory="RBI_EXPLANATIONS",
-    embedding_function=embedding)
+GPT_MODEL = "gpt-4o-mini"
 
-global_ranker = Ranker(model_name="ms-marco-TinyBERT-L-2-v2")
 # --- Function Definitions ---
 
-def generate_response(API_KEY,prompt, model, json_mode=False, stream=False):
+def generate_response(prompt, model, json_mode=False, stream=False):
     """
     Calls the OpenAI chat API.
     (If your API/client supports streaming, pass stream=True; here we use a non-streaming call.)
     """
-    client = OA(api_key=API_KEY)
+    
     if json_mode:
         response = client.chat.completions.create(
             temperature=0.1,
@@ -65,41 +58,40 @@ def generate_response(API_KEY,prompt, model, json_mode=False, stream=False):
         )
     return response
 
-def retrieval(db, query, bm25_retriever, k, filter=None):
-    if filter:
-        filter_conditions = {"id": {"$in": filter}}
-        retriever = db.as_retriever(search_kwargs={"k": k, "filter": filter_conditions})
-        bm25_retriever.k = 50
-    else:
-        retriever = db.as_retriever(search_kwargs={"k": k})
-        bm25_retriever.k = 50
+def retrieval(query,index,bm25_encoder,embedding, k):
 
-    ensemble_retriever = EnsembleRetriever(
-        retrievers=[bm25_retriever, retriever],
-        weights=[0.4, 0.6]
-    )
-    matched_docs = ensemble_retriever.get_relevant_documents(query=query)
-    return matched_docs
+    sparce_query_vector = bm25_encoder.encode_queries(query)
+    dense_query_vector = embedding.embed_query(query)
 
-def reranking(query, matched_docs, k1):
-    passages = [
-        {"id": i, "text": doc.page_content, "meta": doc.metadata}
-        for i, doc in enumerate(matched_docs)
-    ]
-    rerank_request = RerankRequest(query=query, passages=passages)
-    rerank_response = global_ranker.rerank(rerank_request)[:k1]
+    query_response = index.query(
+    top_k=k,
+    vector=dense_query_vector,
+    sparse_vector=sparce_query_vector,
+    include_metadata=True)   
     
-    final_results = []
-    for r in rerank_response:
-        doc = Document(
-            page_content=r["text"],
-            metadata=r["meta"]
-        )
-        final_results.append(doc)
-    return final_results
+    return query_response
+
+def reranking(co,query,query_response,k1):
+
+    results = co.rerank(
+    model="rerank-v3.5",
+    query=query,
+    documents=[resp.metadata['context'] for resp in query_response['matches']],
+    top_n=k1)
+
+    final_docs = [
+    Document(
+        page_content=(
+            m := query_response["matches"][i.index]["metadata"].copy()
+        ).pop("original", ""),
+        metadata={k: v for k, v in m.items() if k != "context"}
+    )
+    for i in results.results]
+
+    return final_docs
 
 
-def hyde_response_final(API_KEY,query, GPT_MODEL):
+def hyde_response_final(query, GPT_MODEL):
     prompt =  """\nQUERY: """ + str(query) + """\nINSTRUCTIONS:
     You are an AI assistant (LLM #1) specializing in banking and financial compliance queries. 
     Your goals are to:
@@ -182,16 +174,8 @@ def hyde_response_final(API_KEY,query, GPT_MODEL):
     • Do not include text outside the JSON response.
     • Include full-forms wherever possible
     """
-    response = generate_response(API_KEY,prompt=prompt, model="gpt-4o", json_mode=True)
+    response = generate_response(prompt=prompt, model="gpt-4o", json_mode=True)
     return response
-
-def stream_text(text, chunk_size=100, delay=0.05):
-    """
-    Helper to simulate streaming output by yielding chunks of text.
-    """
-    for i in range(0, len(text), chunk_size):
-        yield text[i:i + chunk_size]
-        time.sleep(delay)
 
 # --- Flask App ---
 
@@ -206,35 +190,24 @@ def query_endpoint():
     if not query_input:
         return Response("No query provided", status=400)
     
-    API_KEY = data.get("api_key")
-    GPT_MODEL = 'gpt-4o-mini'
-    client = OA(api_key=API_KEY)
-    
     
     @stream_with_context
     def generate():
-        yield "data: " + json.dumps({'response': f'hyde_started','type': 'explanation'}) + "\n\n"
-        # Step 1: Get the hyde (query refinement and classification) response.
-        hyde_resp = hyde_response_final(API_KEY,query_input, GPT_MODEL)
-        # (Assuming a non-streaming response here.)
+    
+        hyde_resp = hyde_response_final(query_input, GPT_MODEL)
         hyde_json = json.loads(hyde_resp.choices[0].message.content)
-        yield "data: " + json.dumps({'response': f'hyde_completed','type': 'explanation'}) + "\n\n"
-        # Step 2: Expand the query and retrieve documents.
-        
-        filtered_docs = []
+
         expanded_query = query_input + ", " + query_input + ", " + ', '.join(hyde_json["refinedQuery"])
-        
-        filtered_docs += retrieval(explanation_db, expanded_query, bm25_retriever, k=50)
-        yield "data: " + json.dumps({'response': f'retrieval_completed','type': 'explanation'}) + "\n\n"
-        # Set k based on query category.
+
+        filtered_docs = retrieval(expanded_query,index,bm25_encoder,embedding, k=100)
+
         if hyde_json["category"] in ["Informational", "Navigational"]:
-            k = 10
+            k1 = 10
         else:
-            k = 15
-        
-        reranked_docs = reranking(expanded_query, filtered_docs, k)
-        reranked_index = [doc.metadata["id"] for doc in reranked_docs]
-        final_docs = [rbi_database.get(key) for key in reranked_index if key in rbi_database]
+            k1 = 15
+
+        final_docs = reranking(co,expanded_query, filtered_docs, k1)
+
         yield "data: " + json.dumps({'response': f'reranking_completed','type': 'explanation'}) + "\n\n"
 
         # Step 3: Build an explanation prompt based on the query category.
