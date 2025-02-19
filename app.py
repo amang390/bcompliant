@@ -1,17 +1,13 @@
 import json
-import pickle
-import time
 from flask import Flask, request, Response, stream_with_context
 from flask_cors import CORS
-
-# --- Imports from LangChain, OpenAI, etc. ---
-from langchain.vectorstores import Chroma
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.docstore.document import Document
-from langchain.retrievers import BM25Retriever, EnsembleRetriever
-from flashrank import Ranker, RerankRequest
 from openai import OpenAI as OA
 import os
+import Pinecone
+import cohere
+from pinecone_text.sparse import BM25Encoder
 
 bm25_encoder = BM25Encoder().load("bm25_values.json")
 
