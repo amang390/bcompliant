@@ -5,7 +5,7 @@ from langchain.embeddings import OpenAIEmbeddings
 from langchain.docstore.document import Document
 from openai import OpenAI as OA
 import os
-import Pinecone
+from pinecone import Pinecone
 import cohere
 from pinecone_text.sparse import BM25Encoder
 
