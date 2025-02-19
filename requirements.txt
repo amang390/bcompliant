@@ -12,3 +12,4 @@ gunicorn==21.2.0
 cohere==5.13.12
 pinecone==5.4.2
 pinecone-text==0.9.0
+nltk==3.9.1

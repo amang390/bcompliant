@@ -9,6 +9,12 @@ from pinecone import Pinecone
 import cohere
 from pinecone_text.sparse import BM25Encoder
 
+import nltk
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt_tab')
+
 bm25_encoder = BM25Encoder().load("bm25_values.json")
 
 openai_api_key = os.getenv("OPENAI_API_KEY")
