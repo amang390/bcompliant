@@ -210,8 +210,6 @@ def query_endpoint():
 
         final_docs = reranking(co,expanded_query, filtered_docs, k1)
 
-        yield "data: " + json.dumps({'response': f'reranking_completed','type': 'explanation'}) + "\n\n"
-
         # Step 3: Build an explanation prompt based on the query category.
         if hyde_json["category"] == "Informational":
             explanation_prompt = f"""You are a compliance expert assistant. The user’s query is informational, meaning they want a summary or explanation. 
@@ -274,7 +272,6 @@ def query_endpoint():
             if chunk.choices[0].delta.content is not None:
                yield f"data: {json.dumps({'response': chunk.choices[0].delta.content,'type': 'explanation'})}\n\n"
 
-        yield "data: " + json.dumps({'response': f'explanation_completed','type': 'explanation'}) + "\n\n"
 
         prompt_documents = ""
         for i, doc in enumerate(final_docs, start=1):
@@ -335,11 +332,7 @@ def query_endpoint():
 
         END OF INSTRUCTIONS
         """.strip()
-        
-        yield "data: " + json.dumps({'response': ' \n','type': 'reference'}) + "\n\n"
-        yield "data: " + json.dumps({'response': f'\nReferences:\n','type': 'reference'}) + "\n\n"
-        yield "data: " + json.dumps({'response': ' \n','type': 'reference'}) + "\n\n"
-
+    
         # Step 5: Generate references (also streamed from OpenAI).
         reference_response = client.chat.completions.create(
             temperature=0.1,
