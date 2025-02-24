@@ -8,6 +8,7 @@ import os
 from pinecone import Pinecone
 import cohere
 from pinecone_text.sparse import BM25Encoder
+from datetime import datetime
 
 import nltk
 try:
@@ -95,7 +96,7 @@ def reranking(co,query,query_response,k1):
 
 def hyde_response_final(query, GPT_MODEL):
     prompt =  """\nQUERY: """ + str(query) + """\nINSTRUCTIONS:
-    You are an AI assistant (LLM #1) specializing in banking and financial compliance queries. 
+    You are an AI assistant (LLM #1) specializing in Indian banking and financial compliance queries. 
     Your goals are to:
 
     1. **Classify** the user's query into one of the following categories:
@@ -119,54 +120,53 @@ def hyde_response_final(query, GPT_MODEL):
 
     -----
     **Example 1 (Informational)**
-    User: "What are the new FATF guidelines for AML compliance this year?"
+    User: "What are the new RBI guidelines for AML compliance this year?"
     Output:
     {
     "category": "Informational",
     "refinedQuery": [
-    "Retrieve the most recent FATF (Financial Action Task Force) guidelines or recommendations for AML (Anti-Money Laundering) compliance in 2025..."
+    "Retrieve the most recent RBI guidelines on Anti-money laundering (AML) compliance under the Prevention of Money Laundering Act (PMLA) in 2025."
     ]
     }
 
     **Example 2 (Navigational)**
-    User: "Where can I find the FDIC 2024 compliance manual PDF?"
+    User: "Where can I find the RBI 2024 Master Directions on KYC?"
     Output:
     {
     "category": "Navigational",
     "refinedQuery": [
-    "Locate the official FDIC Compliance Manual (2024 edition) PDF..."
+    "Locate the official RBI Master Directions on KYC (2024 edition) PDF"
     ]
     }
 
     **Example 3 (Transactional)**
-    User: "Generate a checklist of main MiFID II obligations for retail investor protection."
+    User: "Generate a checklist of key RBI compliance obligations for banks in India."
     Output:
     {
     "category": "Transactional",
     "refinedQuery": [
-    "Generate a compliance checklist for key MiFID II obligations..."
+    "Generate a compliance checklist for key RBI regulatory obligations applicable to banks in India."
     ]
     }
 
     **Example 4 (Transactional + user input)** 
-    User: "Compare my bank’s internal policy on high-risk customer onboarding with current FATF guidelines."
+    User: "Compare my bank’s internal policy on high-risk customer onboarding with current RBI KYC & PMLA guidelines"
     Output:
     {
     "category": "Transactional",
     "refinedQuery": [
-    "User wants a gap analysis comparing internal policy (provided in user text) with FATF guidelines..."
+    "Perform a gap analysis comparing the bank’s internal policy (provided in user text) with RBI Master Directions on KYC and PMLA guidelines."
     ]
     }
 
     **Example 5 (Multiple refined queries)** 
-    User: "I want to compare AML compliance changes from FinCEN and OFAC since 2023. Also, check if there are any new guidelines from FATF?"
+    User: "I want to compare AML compliance changes from RBI since 2023. Also, check if there are any new guidelines on KYC compliance?"
     Output:
     {
     "category": "Informational",
     "refinedQuery": [
-    "Retrieve recent AML compliance changes from FinCEN...",
-    "Retrieve recent AML compliance changes from OFAC...",
-    "Retrieve any new FATF guidelines relevant to AML..."
+    "Retrieve recent AML compliance changes from RBI since 2023.",
+    "Retrieve the latest RBI guidelines on KYC compliance."
     ]
     }
     -----
@@ -175,6 +175,8 @@ def hyde_response_final(query, GPT_MODEL):
     • Return only valid JSON, no extra commentary.
     • Do not include text outside the JSON response.
     • Include full-forms wherever possible
+    • Today's date is """ +datetime.today().strftime("%B %d, %Y")+""". The retrieval system contains up-to-date information. 
+    • Do not assume outdated timeframes like "as of 2023" unless explicitly mentioned by the user.
     """
     response = generate_response(prompt=prompt, model="gpt-4o", json_mode=True)
     return response
@@ -201,7 +203,7 @@ def query_endpoint():
 
         expanded_query = query_input + ", " + query_input + ", " + ', '.join(hyde_json["refinedQuery"])
 
-        filtered_docs = retrieval(expanded_query,index,bm25_encoder,embedding, k=100)
+        filtered_docs = retrieval(expanded_query,index,bm25_encoder,embedding, k=80)
 
         if hyde_json["category"] in ["Informational", "Navigational"]:
             k1 = 10
@@ -212,49 +214,58 @@ def query_endpoint():
 
         # Step 3: Build an explanation prompt based on the query category.
         if hyde_json["category"] == "Informational":
-            explanation_prompt = f"""You are a compliance expert assistant. The user’s query is informational, meaning they want a summary or explanation. 
+            explanation_prompt = f"""You are a compliance expert assistant specializing in Indian banking and financial compliance. The user’s query is informational, meaning they want a summary or explanation. 
             Use the retrieved documents to provide a clear, concise answer, focusing on key points and relevant details. 
-            Here is the user’s query and relevant context:
+            Here is the user’s query and relevant context (updated as of {datetime.today().strftime("%B %d, %Y")}):
             ["userQuery": {query_input}, "retrievedDocuments": {final_docs}]
 
             Please format your final answer as a short explanation or summary. Include any critical details such as new rules, regulation names, or timelines.
             Remember: 
-            1. Stick strictly to the retrievedDocuments's content. If the retrievedDocuments did not return relevant information, be transparent about it.
-            2. Always prioritize the most recent document. If multiple documents have relevant information:
+            1. Strictly focus on compliance-related queries. If the user asks something unrelated, respond that you can only assist with RBI compliance matters.  
+            2. Stick to the retrievedDocuments content. If relevant information is found in the documents, use that exclusively. If the retrievedDocuments did not return relevant information, be transparent about it.
+            3. Prioritize the latest time frame when selecting relevant regulations. Always refer to the most recent regulations as of {datetime.today().strftime("%B %d, %Y")}
+            4. Always prioritize the most recent document. If multiple documents have relevant information:
                 - (a) Look for the answer first in Acts, Act Rules and Regulations. Then look for answer in Master Directions.
                 - (b) If the answer is not found in Master Directions, then look in Master Circulars, Notifications, or Draft Notifications (only if published after the Master Direction).
                 - (c) Draft Notifications should be used last because they are not finalized guidelines.
             """
         elif hyde_json["category"] == "Navigational":
-            explanation_prompt = f"""You are a compliance expert assistant. The user wants to locate a specific resource or document. 
+            explanation_prompt = f"""You are a compliance expert assistant specializing in Indian banking and financial compliance. The user wants to locate a specific resource or document. 
             Provide them with direct references, links, or sections. Keep it concise and ensure they can find the material easily. 
-            Here is the user’s query and context:
+            Here is the user’s query and retrieved context (updated as of {datetime.today().strftime("%B %d, %Y")}):
             ["userQuery": {query_input}, "retrievedDocuments": {final_docs}]
 
             Output your answer as direct references or URLs wherever possible.
             Remember: 
-            1. Stick strictly to the retrievedDocuments's content. If the retrievedDocuments did not return relevant information, be transparent about it.
-            2. Always prioritize the most recent document. If multiple documents have relevant information:
+            1. Strictly focus on compliance-related queries. If the user asks something unrelated, respond that you can only assist with RBI compliance matters.  
+            2. Stick to the retrievedDocuments content. If relevant information is found in the documents, use that exclusively. If the retrievedDocuments did not return relevant information, be transparent about it.
+            3. Prioritize the latest time frame when selecting relevant regulations. Always refer to the most recent regulations as of {datetime.today().strftime("%B %d, %Y")}
+            4. Always prioritize the most recent document. If multiple documents have relevant information:
                 - (a) Look for the answer first in Acts, Act Rules and Regulations. Then look for answer in Master Directions.
                 - (b) If the answer is not found in Master Directions, then look in Master Circulars, Notifications, or Draft Notifications (only if published after the Master Direction).
                 - (c) Draft Notifications should be used last because they are not finalized guidelines.
-            3. Provide the relevant references from the original documents
+            5. Always provide references and links from the original documents whenever possible.  
             """
         elif hyde_json["category"] == "Transactional":
             explanation_prompt = f"""You are a compliance expert assistant. The user wants to perform a task (e.g., generate a checklist, compare regulations). 
             Use the retrieved documents to produce the requested output. 
             If they want a comparison, provide a table; if they want a checklist, provide bullet points; if they want calculations, perform calculations accurately etc. 
-            Here is the user’s query and context:
+            Here is the user’s query and retrieved context (updated as of {datetime.today().strftime("%B %d, %Y")}):
             ["userQuery": {query_input}, "expandedQuery": {expanded_query}, "retrievedDocuments": {final_docs}]
 
             Remember: 
-            1. Make sure your final answer is actionable and clearly structured for immediate use.
-            2. Stick strictly to the retrievedDocuments's content. If the retrievedDocuments did not return relevant information, be transparent about it.
-            3. Always prioritize the most recent document. If multiple documents have relevant information:
+            1. Strictly focus on compliance-related queries. If the user asks something non-compliance-related, respond that you can only assist with RBI compliance matters.  
+            2. Stick to the retrievedDocuments content. If relevant information is found in the documents, use that exclusively. If the retrievedDocuments did not return relevant information, be transparent about it.
+            3. Prioritize the latest time frame when selecting relevant regulations. Always refer to the most recent regulations as of {datetime.today().strftime("%B %d, %Y")}
+            4. Structure your response based on the task type:
+                - If the user requests a checklist, provide clear bullet points**.  
+                - If the user requests a comparison, present information in a table format.  
+                - If the user requests a calculation, ensure accuracy using provided regulatory formulas or standards.
+            5. Always prioritize the most recent document. If multiple documents have relevant information:
                 - (a) Look for the answer first in Acts, Act Rules and Regulations. Then look for answer in Master Directions.
                 - (b) If the answer is not found in Master Directions, then look in Master Circulars, Notifications, or Draft Notifications (only if published after the Master Direction).
                 - (c) Draft Notifications should be used last because they are not finalized guidelines.
-            4. Always provide the relevant references from the original documents within your answers
+            6. Always provide references and links from the original documents whenever possible. 
             """
         else:
             explanation_prompt = "Invalid category."
@@ -278,10 +289,12 @@ def query_endpoint():
             doc_name = doc.metadata.get("name", "Unknown Name")
             doc_date = doc.metadata.get("date", "Unknown Date")
             doc_type = doc.metadata.get("type", "Unknown Type")
+            doc_link = doc.metadata.get("link", "Unknown link")
             
             prompt_documents += f"DOCUMENT #{i}\n"
             prompt_documents += f"Document Name: {doc_name}\n"
             prompt_documents += f"Document Date: {doc_date}\n"
+            prompt_documents += f"Document Link: {doc_link}\n"
             prompt_documents += f"Document Type: {doc_type}\n\n"
             prompt_documents += f"{doc.page_content}\n\n"
 
@@ -314,15 +327,15 @@ def query_endpoint():
 
         6. For each relevant extraction, precede it with the DOCUMENT reference details and the exact section/clauses if available. 
             Example:
-            **1. Reference from [Document Name] (Master Directions) issued on [Date], Section 2.1.1.1:\n**
+            **1. Reference from [Document Name](Document Link) (Master Directions) issued on [Date], Section 2.1.1.1:\n**
             [Extracted Paragraph(s)]
 
-            **2. Reference from [Document Name] (Notification) issued on [Date], Section 3.2.4:\n**
+            **2. Reference from [Document Name](Document Link) (Notification) issued on [Date], Section 3.2.4:\n**
             [Extracted Paragraph(s)]
 
         7. Output the extracted information in descending chronological order (most recent to oldest).
 
-        8. If the DOCUMENT(S) do not contain any relevant information, respond with exactly:
+        8. If the DOCUMENT(S) do not contain any relevant information or the QUESTION is completely unrelated to compliance, respond with exactly:
             (No Reference Found)
 
         9. Produce no text other than:
