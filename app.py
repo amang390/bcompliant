@@ -221,7 +221,7 @@ def query_endpoint():
 
             Please format your final answer as a short explanation or summary. Include any critical details such as new rules, regulation names, or timelines.
             Remember: 
-            1. Strictly focus on compliance-related queries. If the user asks something unrelated, respond that you can only assist with RBI compliance matters.  
+            1. Do NOT answer questions completely unrelated to banking or compliance, even if they are well-formed. If the user asks something unrelated, respond that you can only assist with compliance matters.  
             2. Stick to the retrievedDocuments content. If relevant information is found in the documents, use that exclusively. If the retrievedDocuments did not return relevant information, be transparent about it.
             3. Prioritize the latest time frame when selecting relevant regulations. Always refer to the most recent regulations as of {datetime.today().strftime("%B %d, %Y")}
             4. Always prioritize the most recent document. If multiple documents have relevant information:
@@ -237,7 +237,7 @@ def query_endpoint():
 
             Output your answer as direct references or URLs wherever possible.
             Remember: 
-            1. Strictly focus on compliance-related queries. If the user asks something unrelated, respond that you can only assist with RBI compliance matters.  
+            1. Do NOT answer questions completely unrelated to banking or compliance, even if they are well-formed. If the user asks something unrelated, respond that you can only assist with compliance matters.  
             2. Stick to the retrievedDocuments content. If relevant information is found in the documents, use that exclusively. If the retrievedDocuments did not return relevant information, be transparent about it.
             3. Prioritize the latest time frame when selecting relevant regulations. Always refer to the most recent regulations as of {datetime.today().strftime("%B %d, %Y")}
             4. Always prioritize the most recent document. If multiple documents have relevant information:
@@ -254,7 +254,7 @@ def query_endpoint():
             ["userQuery": {query_input}, "expandedQuery": {expanded_query}, "retrievedDocuments": {final_docs}]
 
             Remember: 
-            1. Strictly focus on compliance-related queries. If the user asks something non-compliance-related, respond that you can only assist with RBI compliance matters.  
+            1. Do NOT answer questions completely unrelated to banking or compliance, even if they are well-formed. If the user asks something non-compliance-related, respond that you can only assist with compliance matters.  
             2. Stick to the retrievedDocuments content. If relevant information is found in the documents, use that exclusively. If the retrievedDocuments did not return relevant information, be transparent about it.
             3. Prioritize the latest time frame when selecting relevant regulations. Always refer to the most recent regulations as of {datetime.today().strftime("%B %d, %Y")}
             4. Structure your response based on the task type:
@@ -271,7 +271,7 @@ def query_endpoint():
             explanation_prompt = "Invalid category."
         
         explanation_response = client.chat.completions.create(
-            temperature=0.2,
+            temperature=0.1,
             model="gpt-4o-mini",
             messages=[{
                 "role": "user",
