@@ -393,7 +393,7 @@ def query_endpoint():
             )
             for chunk in explanation_response:
                 if chunk.choices[0].delta.content is not None:
-                yield f"data: {json.dumps({'response': chunk.choices[0].delta.content,'type': 'explanation'})}\n\n"
+                    yield f"data: {json.dumps({'response': chunk.choices[0].delta.content,'type': 'explanation'})}\n\n"
 
 
             prompt_documents = ""
