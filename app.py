@@ -313,7 +313,7 @@ def query_endpoint():
 
             expanded_query = query_input + ", " + query_input + ", " + ', '.join(hyde_json["refinedQuery"])
 
-            filtered_docs = retrieval(expanded_query,index,bm25_encoder,embedding, k=80)
+            filtered_docs = retrieval(query_input,index,bm25_encoder,embedding, k=80)
 
             if hyde_json["category"] in ["Informational", "Navigational"]:
                 k1 = 10
