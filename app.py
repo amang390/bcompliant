@@ -98,12 +98,6 @@ def reranking(co,query,original_query,query_response,k1):
     documents=[resp.metadata['context'] for resp in query_response['matches']],
     top_n=k1)
 
-    results1 = co.rerank(
-    model="rerank-v3.5",
-    query=original_query,
-    documents=[query_response["matches"][i.index]["metadata"]['context'] for i in results.results],
-    top_n=k1)
-
     final_docs = [
     Document(
         page_content=(
@@ -113,7 +107,7 @@ def reranking(co,query,original_query,query_response,k1):
     )
     for i in results.results]
 
-    confidence = compute_confidence_hybrid(results1, lambda_=0.5)
+    confidence = compute_confidence_hybrid(results, lambda_=0.5)
 
     return confidence,final_docs
 
