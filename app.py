@@ -62,22 +62,9 @@ def generate_response(prompt, model, json_mode=False, stream=False):
         )
     return response
 
-def retrieval(query,index,bm25_encoder,embedding, k):
-
-    sparce_query_vector = bm25_encoder.encode_queries(query)
-    dense_query_vector = embedding.embed_query(query)
-
-    query_response = index.query(
-    top_k=k,
-    vector=dense_query_vector,
-    sparse_vector=sparce_query_vector,
-    include_metadata=True)   
-    
-    return query_response
-
 def compute_confidence_hybrid(results, lambda_=0.5, alpha=0.3, min_boost_threshold=0.5, boost_factor=0.1):
 
-    scores = np.array([item.relevance_score for item in results.results])
+    scores = np.array([item.score for item in results.data])
     weights = np.exp(-lambda_ * np.arange(len(scores)))
     C_exp_decay = np.sum(scores * weights) / np.sum(weights)
     top_k = min(3, len(scores))
@@ -89,6 +76,42 @@ def compute_confidence_hybrid(results, lambda_=0.5, alpha=0.3, min_boost_thresho
     confidence_score = min(confidence_score, 1.0)
 
     return confidence_score
+
+def retrieval(query,k,k1):
+
+    sparce_query_vector = bm25_encoder.encode_queries(query)
+    dense_query_vector = embedding.embed_query(query)
+
+    query_response = index.query(
+    top_k=k,
+    vector=dense_query_vector,
+    sparse_vector=sparce_query_vector,
+    include_metadata=True)
+
+    results = pc.inference.rerank(
+    model="cohere-rerank-3.5",
+    query=query,
+    documents=[resp.metadata['context'] for resp in query_response['matches']],
+    top_n=k1,
+    return_documents=False)
+
+    confidence = compute_confidence_hybrid(results, lambda_=0.5)
+
+    final_docs = [
+    Document(
+        page_content=(
+            m := query_response["matches"][i.index]["metadata"].copy()
+        ).pop("original", ""),
+        metadata={k: v for k, v in m.items() if k != "context"}
+    )
+    for i in results.data]
+
+    confidence = compute_confidence_hybrid(results, lambda_=0.5)
+   
+    
+    return confidence,final_docs
+
+
 
 def reranking(co,query,original_query,query_response,k1):
 
@@ -313,14 +336,12 @@ def query_endpoint():
 
             expanded_query = query_input + ", " + query_input + ", " + ', '.join(hyde_json["refinedQuery"])
 
-            filtered_docs = retrieval(expanded_query,index,bm25_encoder,embedding, k=80)
-
             if hyde_json["category"] in ["Informational", "Navigational"]:
                 k1 = 10
             else:
                 k1 = 15
 
-            confidence,final_docs = reranking(co,expanded_query,query_input, filtered_docs, k1)
+            confidence,final_docs = retrieval(expanded_query,k=80,k1=k1)
 
             yield f"data: {json.dumps({'response': str(confidence),'type': 'confidence'})}\n\n"
 
