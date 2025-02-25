@@ -90,11 +90,17 @@ def compute_confidence_hybrid(results, lambda_=0.5, alpha=0.3, min_boost_thresho
 
     return confidence_score
 
-def reranking(co,query,query_response,k1):
+def reranking(co,query,original_query,query_response,k1):
 
     results = co.rerank(
     model="rerank-v3.5",
     query=query,
+    documents=[resp.metadata['context'] for resp in query_response['matches']],
+    top_n=k1)
+
+    results1 = co.rerank(
+    model="rerank-v3.5",
+    query=original_query,
     documents=[resp.metadata['context'] for resp in query_response['matches']],
     top_n=k1)
 
@@ -107,7 +113,7 @@ def reranking(co,query,query_response,k1):
     )
     for i in results.results]
 
-    confidence = compute_confidence_hybrid(results, lambda_=0.5)
+    confidence = compute_confidence_hybrid(results1, lambda_=0.5)
 
     return confidence,final_docs
 
@@ -320,7 +326,7 @@ def query_endpoint():
             else:
                 k1 = 15
 
-            confidence,final_docs = reranking(co,query_input, filtered_docs, k1)
+            confidence,final_docs = reranking(co,expanded_query,query_input, filtered_docs, k1)
 
             yield f"data: {json.dumps({'response': str(confidence),'type': 'confidence'})}\n\n"
 
