@@ -444,11 +444,12 @@ def query_endpoint():
                 - There is a separate LLM which will interpret your extracted output.
 
             6. For each relevant extraction, precede it with the DOCUMENT reference details and the exact section/clauses if available. 
+                - If a document link is present, include it; otherwise, omit it.
                 Example:
-                *1. [Document Name](Document Link) (Master Directions) issued on [Date], Section 2.1.1.1:*
+                *1. [Document Name](Document Link if available) (Master Directions) issued on [Date], Section 2.1.1.1:*
                 [Extracted Paragraph(s)]
 
-                *2. [Document Name](Document Link) (Notification) issued on [Date], Section 3.2.4:*
+                *2. [Document Name] (Notification) issued on [Date], Section 3.2.4:*
                 [Extracted Paragraph(s)]
 
             7. Output the extracted information in descending chronological order (most recent to oldest).
