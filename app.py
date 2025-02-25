@@ -101,7 +101,7 @@ def reranking(co,query,original_query,query_response,k1):
     results1 = co.rerank(
     model="rerank-v3.5",
     query=original_query,
-    documents=[resp.metadata['context'] for resp in query_response['matches']],
+    documents=[query_response["matches"][i.index]["metadata"]['context'] for i in results.results],
     top_n=k1)
 
     final_docs = [
