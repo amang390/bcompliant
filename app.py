@@ -33,6 +33,7 @@ index = pc.Index("rbifinal")
 DATABASE_URL = os.getenv("DATABASE_URL")
 engine = create_engine(DATABASE_URL)
 conn = engine.connect()
+conn.rollback()
 
 GPT_MODEL = "gpt-4o-mini"
 
