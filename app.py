@@ -459,9 +459,14 @@ def query_endpoint():
         
         else:
 
-            if (len(hyde_json['SQL'])>0) and (("LIMIT" in hyde_json['SQL'][0]) or ("Notifications" in hyde_json['SQL'][0])):
+            if len(hyde_json['SQL'])>0: 
+                sql_query = hyde_json['SQL'][0].strip()
+
+                if sql_query.upper().startswith("SELECT") and "LIMIT" not in sql_query.upper():
+                    sql_query = sql_query.rstrip(";") + " LIMIT 10;"
+
                 try:
-                    sql_query_result = conn.execute(text(hyde_json['SQL'][0]))
+                    sql_query_result = conn.execute(text(sql_query))
                     column_names = sql_query_result.keys()
                     
                     sql_query_rows = [{key: (value.strftime("%B %d, %Y") if key == "date" and hasattr(value, "strftime") else value)
