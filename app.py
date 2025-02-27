@@ -171,16 +171,16 @@ def hyde_response_final(query, GPT_MODEL):
     3. SQL extraction for deterministic queries.
         Two types of queries only:
             1. Select * from documents: 
-                - Used when a user asks for updates/changes issued by RBI. RBI issues these in the form of notificaitons.
-                - Use it mostly to fetch type='Notifications'. Fetching other document types using this will result in hundreds of documents fetched. 
-                - Always add a LIMIT 10 or lower for this type of SQL query IF NOT using type='Notifications'
+                - Used when a user asks for updates/changes/documents issued by RBI. RBI issues these in the form of notificaitons.
                 - Always use a "type" filter apart from additional filters (like topics ilike or entities ilike) if applicable for this query
             2. Select distinct date, name, link from documents:
                 - Use this for navigational queries where user is looking for a particular document
                 - Apply all the filters applicable like date, name ilike etc.
             3. Queries requiring aggregation such as Select count(*) from documents...
                 - Ensure to run aggregations suitable for text or date columns only. There are no numerical columns in the database
-        Note: Always sort by date DESC unless explicitly stated by the user otherwise.
+        Note: 
+        - Always sort by date DESC unless explicitly stated by the user otherwise. 
+        - Always use a LIMIT 10 or lower
     
 
     4. **Output** must be valid JSON **without extra commentary**. 
@@ -467,7 +467,7 @@ def query_endpoint():
                     sql_query_rows = [{key: (value.strftime("%B %d, %Y") if key == "date" and hasattr(value, "strftime") else value)
                     for key, value in dict(zip(column_names, row)).items() if key not in {"topics", "entities"}}
                     for row in sql_query_result]
-                    
+
                     sql_docs=True
                 except:
                     sql_query_rows= ""
