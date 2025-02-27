@@ -14,3 +14,7 @@ pinecone==5.4.2
 pinecone-text==0.9.0
 nltk==3.9.1
 numpy==1.26.4
+SQLAlchemy==2.0.38
+sqltrie==0.11.1
+psycopg2-binary==2.9.10
+psycopg2==2.9.10
