@@ -212,7 +212,7 @@ def hyde_response_final(query, GPT_MODEL):
     "Locate the official RBI Master Directions on KYC (2024 edition) PDF"
     ]
     "SQL": [
-    "SELECT DISTINCT date, name, link FROM documents WHERE  type='Master Directions' and (topics ILIKE '%%KYC%%' OR topics ILIKE '%%Know your customer%%') and entities ilike '%%RBI%%' ORDER BY date DESC LIMIT 1;"
+    "SELECT DISTINCT date, name, link FROM documents WHERE  type='Master Directions' and (topics ILIKE '%%KYC%%' OR topics ILIKE '%%Know your customer%%') ORDER BY date DESC LIMIT 1;"
     ]
     }
 
