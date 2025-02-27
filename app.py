@@ -588,7 +588,7 @@ def query_endpoint():
                 - The references of the DOCUMENT(S)
                 - The directly relevant paragraphs extracted verbatim (with highlighting)
                 - Or "(No Reference Found)" if no relevant info is found.
-
+                - Today's date is """ +datetime.today().strftime("%B %d, %Y")+""".
             END OF INSTRUCTIONS
             """.strip()
         
